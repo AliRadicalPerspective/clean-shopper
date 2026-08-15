@@ -3,7 +3,7 @@
  *
  * Every consumer imports its collections and lookups from here rather than
  * from src/data/*.js. Those modules are still the seed — `npm run gen:catalog`
- * turns them into supabase/catalog.sql — but at runtime this module is the
+ * turns them into the catalog migration — but at runtime this module is the
  * source of truth.
  *
  * The exported collections are `let` bindings reassigned once by loadCatalog().
@@ -181,7 +181,7 @@ export function loadCatalog() {
       // been run. Worth naming precisely, because the fix is one paste.
       const missing = error?.code === 'PGRST205'
       loadError = missing
-        ? 'The catalog tables do not exist yet. Run supabase/catalog.sql.'
+        ? 'The catalog tables do not exist yet. Run the Supabase migrations.'
         : (error?.message ?? String(error))
       console.warn('[clean-shopper] Catalog fell back to bundled data.', error)
       return SOURCE.bundled

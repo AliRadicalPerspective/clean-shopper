@@ -123,6 +123,7 @@ function normalize(row) {
     company_name: text(row.company_name),
     program: text(row.program) ?? 'Safer Choice',
     sector: text(row.sector),
+    audience: AUDIENCE_MAP[text(row.category)] ?? null,
     upc: normalizeBarcode(row.upcs, 12),
     gtin: normalizeBarcode(row.gtins, 14),
     mpn: text(row.mpns),
@@ -137,7 +138,7 @@ function normalize(row) {
   }
 }
 
-/** Must match the generated source_key column in supabase/safer_choice.sql. */
+/** Must match the generated source_key column in supabase/migrations/20260815120200_safer_choice.sql. */
 function sourceKey(row) {
   return `${row.product_name.toLowerCase()}|${row.company_name.toLowerCase()}|${row.upc ?? ''}`
 }
@@ -246,7 +247,7 @@ async function main() {
       console.error(`\nFailed on rows ${i}–${i + chunk.length - 1}:`, error.message)
       if (error.message.includes('does not exist')) {
         console.error(
-          '\nThe table is missing. Run supabase/safer_choice.sql in the Supabase\n' +
+          '\nThe table is missing. Run supabase/migrations/20260815120200_safer_choice.sql in the Supabase\n' +
             'dashboard (SQL Editor → New query → paste → Run) and try again.',
         )
       }

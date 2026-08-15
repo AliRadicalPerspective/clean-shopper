@@ -1,7 +1,7 @@
 -- Clean Shopper — EPA Safer Choice / DfE certified products
 --
 -- Run this once in the Supabase dashboard: SQL Editor → New query → paste → Run.
--- It is idempotent, so re-running it is safe. Run supabase/schema.sql first if
+-- It is idempotent, so re-running it is safe. Run supabase/migrations/20260815120000_user_state.sql first if
 -- you have not already; the two files are independent, but that one carries the
 -- user_state table the app needs to boot.
 --
@@ -44,6 +44,12 @@ create table if not exists public.safer_choice_products (
   categories       text[] not null default '{}',
   subcategories    text[] not null default '{}',
 
+  -- 'consumer', 'institutional', or both. Nearly half the EPA registry is
+  -- janitorial and industrial supply — drum concentrates, dilution-control
+  -- systems — which a shopper cannot buy and should not meet next to dish
+  -- soap. An array because 471 products are genuinely listed as both.
+  audiences        text[] not null default '{}',
+
   -- Zero-padded to 12 characters. The EPA serves UPCs as JSON integers, which
   -- silently eats the leading zero on most UPC-A codes; storing text and
   -- padding on the way in is what makes barcode lookup work at all.
@@ -85,6 +91,10 @@ create index if not exists safer_choice_products_categories_idx
 
 create index if not exists safer_choice_products_sectors_idx
   on public.safer_choice_products using gin (epa_sectors);
+
+-- Backs the consumer-only filter that every shopper-facing query applies.
+create index if not exists safer_choice_products_audiences_idx
+  on public.safer_choice_products using gin (audiences);
 
 -- Backs the "is this brand certified at all?" question behind trusted brands.
 create index if not exists safer_choice_products_company_idx

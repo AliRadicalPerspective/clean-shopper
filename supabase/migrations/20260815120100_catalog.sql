@@ -4,8 +4,8 @@
 -- modules under src/data/ and re-run `npm run gen:catalog`.
 --
 -- Run this in the Supabase dashboard: SQL Editor → New query → paste → Run.
--- It is idempotent, so re-running it is safe. Run supabase/schema.sql first —
--- that one carries user_state, which the app needs in order to boot.
+-- It is idempotent, so re-running it is safe. The user_state migration runs
+-- first; that one carries the table the app needs in order to boot.
 --
 -- Everything here is reference data: identical for every visitor, world-
 -- readable, and never written from the browser. None of these tables has an

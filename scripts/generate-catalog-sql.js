@@ -1,13 +1,13 @@
 /**
- * Generate supabase/catalog.sql from the data modules.
+ * Generate the catalog migration from the data modules.
  *
  * The seed is generated rather than hand-written so the database and
  * src/data/*.js cannot drift. Re-run it whenever the catalog changes:
  *
  *   npm run gen:catalog
  *
- * Then paste the output into the Supabase SQL editor. The file is idempotent —
- * every insert is an upsert keyed on the primary key.
+ * Applied by `supabase db push`, or by pasting into the SQL editor. The file is
+ * idempotent — every insert is an upsert keyed on the primary key.
  */
 
 import { writeFileSync } from 'node:fs'
@@ -60,8 +60,8 @@ out.push(`-- Clean Shopper — catalog schema and seed
 -- modules under src/data/ and re-run \`npm run gen:catalog\`.
 --
 -- Run this in the Supabase dashboard: SQL Editor → New query → paste → Run.
--- It is idempotent, so re-running it is safe. Run supabase/schema.sql first —
--- that one carries user_state, which the app needs in order to boot.
+-- It is idempotent, so re-running it is safe. The user_state migration runs
+-- first; that one carries the table the app needs in order to boot.
 --
 -- Everything here is reference data: identical for every visitor, world-
 -- readable, and never written from the browser. None of these tables has an
@@ -285,10 +285,10 @@ out.push(
 )
 
 const sql = out.join('\n')
-writeFileSync(new URL('../supabase/catalog.sql', import.meta.url), sql)
+writeFileSync(new URL('../supabase/migrations/20260815120100_catalog.sql', import.meta.url), sql)
 
 console.log(
-  `supabase/catalog.sql written — ${CATEGORIES.length} categories, ` +
+  `supabase/migrations/20260815120100_catalog.sql written — ${CATEGORIES.length} categories, ` +
     `${INGREDIENT_LIST.length} ingredients, ${CERT_LIST.length} certifications, ` +
     `${PRODUCTS.length} products, ${ARTICLES.length} articles ` +
     `(${(sql.length / 1024).toFixed(1)} kB)`,
