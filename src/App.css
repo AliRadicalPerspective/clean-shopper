@@ -1672,7 +1672,10 @@ strong {
    it air above and stops the wordmark and the headline reading as one stack. */
 .ask {
   align-items: start;
-  padding-top: var(--spacing-48);
+  /* 48 + 32 off the scale rather than a one-off value. Enough air that the
+     headline reads as its own event rather than the next line after the
+     wordmark. */
+  padding-top: calc(var(--spacing-48) + var(--spacing-32));
 }
 
 /* A rectangle rather than a full-height strip. The source photograph is
