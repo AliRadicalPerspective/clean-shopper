@@ -35,27 +35,39 @@ export default function AskField({
       }`}
       onSubmit={submit}
     >
-      <label
-        className={display ? 'ask-field__question' : 'label'}
-        htmlFor="ask-input"
-      >
-        {label}
-      </label>
+      <div className="ask-field__head">
+        <label
+          className={display ? 'ask-field__question' : 'label'}
+          htmlFor="ask-input"
+        >
+          {label}
+        </label>
 
-      <div className="ask-field__row">
-        <input
-          id="ask-input"
-          className="ask-field__input"
-          type="text"
-          value={value}
-          autoComplete="off"
-          placeholder="An all-purpose spray with no fragrance"
-          onChange={(event) => setValue(event.target.value)}
-        />
+        <div className="ask-field__row">
+          <input
+            id="ask-input"
+            className="ask-field__input"
+            type="text"
+            value={value}
+            autoComplete="off"
+            placeholder="An all-purpose spray with no fragrance"
+            onChange={(event) => setValue(event.target.value)}
+          />
+          {!display && (
+            <button className="button" type="submit" disabled={busy}>
+              {busy ? 'Researching' : 'Research'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* On the entry screen the button sits outside the aligned block, so the
+          input's rule can line up with the foot of the photograph. */}
+      {display && (
         <button className="button" type="submit" disabled={busy}>
           {busy ? 'Researching' : 'Research'}
         </button>
-      </div>
+      )}
     </form>
   )
 }

@@ -9,17 +9,17 @@ import { SUGGESTIONS } from '../lib/research.js'
 export default function AskView({ onAsk, history, prefsSummary, onNavigate }) {
   return (
     <div className="ask">
-      <div className="ask__column">
-        <AskField
-          onSubmit={onAsk}
-          label={
-            <>
-              What are<span className="ask-field__break"> </span>you cleaning?
-            </>
-          }
-          display
-        />
+      <AskField
+        onSubmit={onAsk}
+        label={
+          <>
+            What are<span className="ask-field__break"> </span>you cleaning?
+          </>
+        }
+        display
+      />
 
+      <div className="ask__rest">
         {/* Says what the store sells, subordinate to the question now that the
             question carries the page. */}
         <p className="ask__positioning">
