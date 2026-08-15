@@ -23,7 +23,7 @@ const TABLE = 'safer_choice_products'
 /** Columns worth pulling for display. Excludes the bookkeeping ones. */
 const FIELDS =
   'product_name, company_name, program, epa_sectors, categories, subcategories, ' +
-  'upc, partner_since, fragrance_free, in_good_standing, product_url'
+  'audiences, upc, partner_since, fragrance_free, in_good_standing, product_url'
 
 export const isSaferChoiceAvailable = isConfigured
 
@@ -55,6 +55,10 @@ async function query(build) {
  *
  * Null means "the EPA has no record of this barcode", which is genuinely
  * different from "this product is not safe" — callers should say so.
+ *
+ * Unlike the browse queries this does not filter to consumer products. If
+ * someone has a barcode in hand the honest answer is whether the EPA certified
+ * that product, not whether we would have merchandised it.
  */
 export async function lookupByUpc(value) {
   const upc = normalizeUpc(value)
@@ -70,7 +74,10 @@ export async function lookupByUpc(value) {
  * Products certified across several sectors match any of them, which is why
  * this is a containment test rather than equality.
  */
-export async function searchSaferChoice(term, { category = null, limit = 20 } = {}) {
+export async function searchSaferChoice(
+  term,
+  { category = null, audience = 'consumer', limit = 20 } = {},
+) {
   const needle = term?.trim()
   return query((q) => {
     let next = q
@@ -81,14 +88,24 @@ export async function searchSaferChoice(term, { category = null, limit = 20 } = 
       next = next.or(`product_name.ilike.%${safe}%,company_name.ilike.%${safe}%`)
     }
     if (category) next = next.contains('categories', [category])
+    if (audience) next = next.contains('audiences', [audience])
     return next.order('product_name').limit(limit)
   })
 }
 
-/** Certified products in one of the app's categories, e.g. 'laundry'. */
-export async function listByCategory(category, { limit = 50 } = {}) {
+/**
+ * Certified products in one of the app's categories, e.g. 'laundry'.
+ *
+ * Consumer-only by default. Pass `audience: null` to include the janitorial
+ * and industrial half of the registry, which is certified but not purchasable.
+ */
+export async function listByCategory(category, { audience = 'consumer', limit = 50 } = {}) {
   if (!category) return []
-  return query((q) => q.contains('categories', [category]).order('product_name').limit(limit))
+  return query((q) => {
+    let next = q.contains('categories', [category])
+    if (audience) next = next.contains('audiences', [audience])
+    return next.order('product_name').limit(limit)
+  })
 }
 
 /**

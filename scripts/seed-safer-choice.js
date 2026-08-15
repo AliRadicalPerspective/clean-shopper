@@ -66,6 +66,19 @@ const SECTOR_MAP = {
   'Hand Soaps': ['hands', 'hand soap'],
 }
 
+/**
+ * EPA product category → who the product is actually sold to.
+ *
+ * The registry is close to an even split, and the institutional half is
+ * janitorial supply: drum concentrates, dilution-control systems, machine
+ * warewash. Certified, but not purchasable by a shopper, so the browser
+ * filters to consumer products by default rather than mixing them in.
+ */
+const AUDIENCE_MAP = {
+  'Consumer Product': 'consumer',
+  'Industrial/Institutional Product': 'institutional',
+}
+
 /* ------------------------------------------------------------------ *
  * Environment
  * ------------------------------------------------------------------ */
@@ -147,10 +160,11 @@ function sourceKey(row) {
  * Fold the EPA's one-row-per-(product × sector) export into one row per
  * product.
  *
- * Only sector, gtin and mpn actually vary inside a group — every other field
- * (program, dates, the boolean flags, the product URL) is identical across a
- * product's rows, verified against the full export — so those collapse safely
- * while the three that vary become arrays.
+ * Only sector, audience, gtin and mpn actually vary inside a group — every
+ * other field (program, dates, the boolean flags, the product URL) is
+ * identical across a product's rows, verified against the full export — so
+ * those collapse safely while the four that vary become arrays. 471 products
+ * really are sold into both the consumer and institutional channels.
  */
 function fold(rows) {
   const byKey = new Map()
@@ -160,14 +174,15 @@ function fold(rows) {
     let entry = byKey.get(key)
 
     if (!entry) {
-      // Dropped from the scalar fields — these three are the only ones that
+      // Dropped from the scalar fields — these four are the only ones that
       // vary within a group, and they are re-added below as arrays.
-      const { sector: _sector, gtin: _gtin, mpn: _mpn, ...rest } = row
+      const { sector: _s, audience: _a, gtin: _g, mpn: _m, ...rest } = row
       entry = {
         ...rest,
         epa_sectors: new Set(),
         categories: new Set(),
         subcategories: new Set(),
+        audiences: new Set(),
         gtins: new Set(),
         mpns: new Set(),
       }
@@ -180,6 +195,7 @@ function fold(rows) {
       if (category) entry.categories.add(category)
       if (subcategory) entry.subcategories.add(subcategory)
     }
+    if (row.audience) entry.audiences.add(row.audience)
     if (row.gtin) entry.gtins.add(row.gtin)
     if (row.mpn) entry.mpns.add(row.mpn)
   }
@@ -189,6 +205,7 @@ function fold(rows) {
     epa_sectors: [...entry.epa_sectors].sort(),
     categories: [...entry.categories].sort(),
     subcategories: [...entry.subcategories].sort(),
+    audiences: [...entry.audiences].sort(),
     gtins: [...entry.gtins].sort(),
     mpns: [...entry.mpns].sort(),
   }))
@@ -260,6 +277,10 @@ async function main() {
 }
 
 function report(raw, usable, rows) {
+  const consumer = rows.filter((row) => row.audiences.includes('consumer'))
+  const shoppable = rows.filter(
+    (row) => row.categories.length > 0 && row.audiences.includes('consumer'),
+  )
   const merchandised = rows.filter((row) => row.categories.length > 0)
   const withUpc = rows.filter((row) => row.upc)
   const multiSector = rows.filter((row) => row.epa_sectors.length > 1)
@@ -269,7 +290,9 @@ function report(raw, usable, rows) {
   console.log(`  usable               ${usable.length}`)
   console.log(`  products after fold  ${rows.length}`)
   console.log(`  spanning >1 sector   ${multiSector.length}`)
+  console.log(`  consumer products    ${consumer.length}`)
   console.log(`  in an app category   ${merchandised.length}`)
+  console.log(`  shoppable (both)     ${shoppable.length}`)
   console.log(`  with a UPC           ${withUpc.length}`)
 
   const byCategory = new Map()
