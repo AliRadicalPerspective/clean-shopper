@@ -7,15 +7,24 @@ import { imageFor, ratioFor } from '../assets/images/index.js'
  * unfilled slot holds its space rather than collapsing. It captions itself
  * with the id and ratio to add, which is the whole handover instruction.
  */
-export default function ImageSlot({ slot, alt = '', className = '' }) {
+export default function ImageSlot({
+  slot,
+  alt = '',
+  className = '',
+  // Drops the fixed ratio so the photograph takes its height from the
+  // container instead — used where the image is a full-height panel rather
+  // than a card, and CSS needs to win over the inline aspect ratio.
+  fill = false,
+}) {
   const src = imageFor(slot)
   const ratio = ratioFor(slot)
+  const sizing = fill ? undefined : { aspectRatio: ratio }
 
   if (src) {
     return (
       <img
         className={`image-slot ${className}`}
-        style={{ aspectRatio: ratio }}
+        style={sizing}
         src={src}
         alt={alt}
       />
@@ -29,7 +38,7 @@ export default function ImageSlot({ slot, alt = '', className = '' }) {
   return (
     <div
       className={`image-slot image-slot--empty ${className}`}
-      style={{ aspectRatio: ratio }}
+      style={sizing}
       role="img"
       aria-label={alt || `Image placeholder: ${caption}`}
     >

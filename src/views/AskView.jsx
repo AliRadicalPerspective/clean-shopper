@@ -10,13 +10,17 @@ export default function AskView({ onAsk, history, prefsSummary, onNavigate }) {
   return (
     <div className="ask">
       <div className="ask__column">
-        {/* The entry screen carried no statement of what this store sells.
-            One line, stated flatly — the system has no room for a headline. */}
+        <AskField
+          onSubmit={onAsk}
+          label="What are you cleaning?"
+          display
+        />
+
+        {/* Says what the store sells, subordinate to the question now that the
+            question carries the page. */}
         <p className="ask__positioning">
           Green cleaning supplies, assessed ingredient by ingredient.
         </p>
-
-        <AskField onSubmit={onAsk} />
 
         <div className="ask__suggestions">
           <span className="label">Or start here</span>
@@ -59,7 +63,7 @@ export default function AskView({ onAsk, history, prefsSummary, onNavigate }) {
       </div>
 
       <div className="ask__editorial">
-        <ImageSlot slot="editorial-entry" alt="" />
+        <ImageSlot slot="editorial-entry" alt="" fill />
       </div>
     </div>
   )

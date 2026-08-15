@@ -12,6 +12,9 @@ export default function AskField({
   label = 'What are you looking for',
   initial = '',
   compact = false,
+  // Entry screen only: renders the prompt as display type rather than a form
+  // label, and enlarges the field to match.
+  display = false,
   busy = false,
   clearOnSubmit = false,
 }) {
@@ -27,10 +30,15 @@ export default function AskField({
 
   return (
     <form
-      className={`ask-field${compact ? ' ask-field--compact' : ''}`}
+      className={`ask-field${compact ? ' ask-field--compact' : ''}${
+        display ? ' ask-field--display' : ''
+      }`}
       onSubmit={submit}
     >
-      <label className="label" htmlFor="ask-input">
+      <label
+        className={display ? 'ask-field__question' : 'label'}
+        htmlFor="ask-input"
+      >
         {label}
       </label>
 
