@@ -1,23 +1,22 @@
 # Clean Shopper
 
-An AI-powered agent that helps users discover home and pantry products that are clean, non-toxic, and environmentally friendly. Users research products, compare options on ingredient safety and sustainability, save preferences, and build a shopping cart — all through a conversational interface backed by Claude.
+Green cleaning supplies, assessed ingredient by ingredient. Describe what you need, and Clean Shopper evaluates the options against ingredient safety and third-party certification, applies the preferences you've saved, and commits to a recommendation — with its reasoning, and with what it set aside and why.
 
 Course demo project for **Claude Code for Designers**.
 
-## Feature scope (V1)
+> **Scope note.** The original brief covers home, pantry, and personal-care products. This build is narrowed to **household cleaning supplies only** — surfaces, laundry, dishwashing, and hand soap — so the catalog, the ingredient library, the certifications, and the voice all address one aisle. `docs/CCDCourse_CleanShopper_ProjectBrief.md` is the original brief and has not been rewritten.
 
-- **Product research** — describe what you're looking for; Clean Shopper evaluates ingredients against clean standards and surfaces recommendations with reasoning (real-time web search + ingredient-safety databases like EWG's Skin Deep).
-- **Preference management** — save ingredients to avoid, trusted brands, and certifications that matter (EWG Verified, USDA Organic, B Corp); applied automatically to every recommendation.
+## Feature scope
+
+- **Product research** — describe what you're looking for; Clean Shopper evaluates ingredients against clean standards and surfaces recommendations with reasoning.
+- **Preference management** — save ingredients to avoid, trusted brands, and certifications that matter; applied automatically to every recommendation.
 - **Shopping cart** — recommended products persist across sessions.
 - **Comparison** — side-by-side product comparison with a clear recommendation based on saved preferences.
+- **The Journal** — six research pieces explaining the assessments, surfaced under an answer when they're relevant to the concerns it raised.
 
-Out of scope for V1: checkout/payment, direct retailer integrations, barcode scanning, user accounts/auth, mobile app.
+Out of scope: checkout/payment, direct retailer integrations, barcode scanning, user accounts/auth, mobile app.
 
-See [`docs/CCDCourse_CleanShopper_ProjectBrief.md`](docs/CCDCourse_CleanShopper_ProjectBrief.md) for the full brief.
-
-## Stack
-
-React + Vite.
+See [`docs/CCDCourse_CleanShopper_ProjectBrief.md`](docs/CCDCourse_CleanShopper_ProjectBrief.md) for the full brief and [`docs/project-context.md`](docs/project-context.md) for the working context document.
 
 ## Getting started
 
@@ -25,3 +24,135 @@ React + Vite.
 npm install
 npm run dev
 ```
+
+## Supabase setup
+
+Migrations live in `supabase/migrations/`. Apply them either way:
+
+**With the CLI** — one command once you are linked:
+
+```bash
+npx supabase login
+npx supabase link --project-ref syfattcxbsjfiofabqou
+npx supabase db push
+```
+
+**Or by hand** — paste each file in `supabase/migrations/` into the dashboard
+SQL editor, in filename order. Every migration is idempotent, so re-running is
+safe.
+
+Then **enable anonymous sign-ins** (Authentication → Sign In / Providers).
+Identity comes from there, and `user_state`'s row-level security keys on
+`auth.uid()` — without it the tables exist but nothing syncs.
+
+Finally, copy `.env.example` to `.env.local` and fill in the project URL and
+publishable key.
+
+## How this build works
+
+**Mock data, real interface.** There is no Claude API call. [`src/lib/research.js`](src/lib/research.js) is an async service returning the shape a real call would return, so wiring one in later means replacing the body of `research()` and nothing above it. A backend proxy would be required first — a Vite front-end cannot hold an API key safely.
+
+**Persistence is local-first, with optional Supabase sync.** localStorage is the synchronous read path, so the app paints with your cart already in it and keeps working offline. When `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set, [`src/lib/storage.js`](src/lib/storage.js) write-throughs to Supabase behind an anonymous session — which threads the brief's needle, since the browser gets a real `auth.users` row for row-level security with no signup UI anywhere. With no env vars set it degrades to exactly the localStorage-only behavior. Copy [`.env.example`](.env.example) to `.env.local` to configure it; anonymous sign-ins must be enabled in the Supabase dashboard.
+
+**The shop assistant is docked on every page.** [`src/components/ChatDock.jsx`](src/components/ChatDock.jsx) is a hairline-bounded tab that expands into a flat column — not a floating pill, which would break the radius, elevation and palette rules at once. It runs on the `chat` Edge Function when deployed and on the deterministic engine otherwise, and it always states which one answered. Preferences it saves are written through the same state the Preferences page edits, and each is confirmed in the transcript with an undo.
+
+**The catalog loads from Supabase.** [`src/lib/catalog.js`](src/lib/catalog.js) is the runtime source of truth; every view imports its collections and lookups from there rather than from `src/data/`. Those modules are now the *seed* — `npm run gen:catalog` turns them into `supabase/migrations/20260815120100_catalog.sql`, so the database and the code cannot drift.
+
+Photography stays in the bundle. `image` is a slot name resolved against `src/assets/images/index.js`, so the database stores a short string and nothing is uploaded to storage.
+
+If the tables are missing or unreachable, the app falls back to the bundled seed **and says so on screen** — a store that quietly serves stale data while looking database-backed is worse than one that fails visibly.
+
+**Every screen has a URL.** Hash routing, no dependency — `#/research`, `#/products?category=surfaces&subcategory=glass`, `#/product/<id>`, `#/compare?ids=a,b`, `#/journal/<slug>`. See [`src/lib/router.js`](src/lib/router.js).
+
+**Every brand in the catalog is invented.** Making a safety claim about a real product from mock data would be the exact failure this app exists to fight. The ingredients and certifications are real reference concepts; the products carrying them are not.
+
+**One real dataset sits beside the invented one.** [`supabase/migrations/20260815120200_safer_choice.sql`](supabase/migrations/20260815120200_safer_choice.sql) defines `safer_choice_products`, a mirror of the EPA's Safer Choice and Design for the Environment registries — ~2,700 genuinely certified products with barcodes, sourced from [Envirofacts](https://www.epa.gov/enviro/download-additional-envirofacts-datasets). It is world-readable reference data with no write policy, queried through [`src/lib/saferChoice.js`](src/lib/saferChoice.js). This is what lets `safer-choice` in [`src/data/certifications.js`](src/data/certifications.js) stop being only a description of a mark and start being checkable against a specific product. See [Importing EPA Safer Choice data](#importing-epa-safer-choice-data).
+
+### Design decisions worth knowing
+
+The visual system is the editorial-minimalism spec in [`docs/DESIGN.md`](docs/DESIGN.md) — three colors, zero border radius, zero elevation, 11–16px type, 1px hairlines. Two places where that system and the product's job collided:
+
+- **The conversation renders as a magazine, not a chat log.** A chat column would break the layout language on every axis, so the input recedes to a single hairline-underlined field and the answer re-renders the page as an editorial spread.
+- **Ingredient risk is signaled without color.** The spec forbids semantic color, so severity is carried by ordering, uppercase labels, and ink-versus-stone contrast. Every concern also shows its evidence and confidence level, because much of this science is genuinely contested.
+
+Answers are verdict-first: one pick, up to two alternates, then what was set aside and why. Showing the discards is what makes the shortlist believable.
+
+**The conversation is threaded.** Turns stack down the page oldest-first and stay readable, so the thread reads as a record of the reasoning rather than one answer that keeps being replaced. Follow-ups resolve against the previous turn — "something cheaper", "show me another", "without fragrance" — and avoidances accumulate down the thread. When a follow-up lands on the same product, the answer says so rather than silently re-serving it.
+
+**The catalog filters by category and subcategory only.** Concern level, certification, fragrance-free and price were scoped out; the evaluation logic already computes all of them, so adding those filters is UI work in [`src/views/ProductsView.jsx`](src/views/ProductsView.jsx), not new logic. Saved preferences apply there the same way they apply to an answer: conflicting products drop to a "set aside" section with the reason rather than vanishing, and the filter can be switched off.
+
+## Importing EPA Safer Choice data
+
+Optional — the app runs without it. Three steps, in order:
+
+1. **Create the table.** Supabase dashboard → SQL Editor → New query → paste [`supabase/migrations/20260815120200_safer_choice.sql`](supabase/migrations/20260815120200_safer_choice.sql) → Run. Idempotent, so re-running is safe.
+2. **Add the service_role key** to `.env` as `SUPABASE_SERVICE_ROLE_KEY` (dashboard → Project Settings → API Keys). Bulk-writing reference data has to get past row-level security. It is deliberately not `VITE_`-prefixed so Vite can never inline it into the bundle — keep it out of `.env.local` and out of git.
+3. **Run the import.**
+
+```bash
+npm run seed:safer-choice
+```
+
+Preview it first without credentials, which fetches and reports but writes nothing:
+
+```bash
+node scripts/seed-safer-choice.js --dry-run
+```
+
+The EPA refreshes this dataset a few times a year; re-running the import is the whole update story, since rows upsert on a natural key rather than duplicating.
+
+Two things the importer handles that are easy to get wrong. Envirofacts serves UPCs as JSON **integers**, so a UPC-A beginning with zero arrives with the zero already gone — barcodes are zero-padded back to 12 characters on the way in, and [`normalizeUpc`](src/lib/saferChoice.js) applies the same padding to anything looked up. And the export is one row per product *per sector*, so a cleaner certified across sixteen sectors arrives as sixteen near-identical rows; those fold into one product with `epa_sectors` as an array. Taking the last row instead would file an all-purpose cleaner under whichever sector sorted last.
+
+## Adding photography
+
+Images live in [`src/assets/images/`](src/assets/images/) and are wired up in `index.js` in that folder. Twenty-three photographs were cut from two supplied collages (3 + 5 + 7 tiles, then 3 + 4).
+
+Slots are named for **what the photograph is** — `spray-lavender`, `hand-pump-amber`, `bottles-herb-infused` — not for the product currently using them. Reassigning a photo is then a one-line change, and renaming the catalog never invalidates the manifest.
+
+All nineteen products are photographed. Any product left without one renders as a captioned hairline frame at the correct ratio, so the layout holds either way.
+
+One caveat worth carrying forward: `bottle-lavender-basket` is 316px wide, against 500–800px for every other photograph. It holds at card size and will look soft if that product is ever shown at full spread width, so replace it first when higher-resolution photography arrives. To fill one: drop the file into that folder, import it at the top of `index.js`, add it to `IMAGES` under a descriptive slot name, and point a product's `image` at that slot in `src/data/products.js`. Editorial slots are 3:2; product slots are 4:5.
+
+## Deploying
+
+Hosted on Vercel. `vercel.json` pins the build explicitly rather than relying on
+framework detection.
+
+1. Import the repo at [vercel.com/new](https://vercel.com/new).
+2. Add two environment variables under Settings → Environment Variables, for
+   both Production and Preview:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. Deploy. Pushes to a branch get a preview URL; `main` becomes production.
+
+Both are safe in a client bundle — the publishable key is designed to ship in
+browser code, and every table it can reach is protected by row-level security.
+**Never** add `SUPABASE_SERVICE_ROLE_KEY` to Vercel; it bypasses RLS entirely
+and belongs only in a local shell.
+
+Without those variables the site still builds and runs: it serves all 19
+products from the bundled seed and says so on screen.
+
+**No SPA rewrite is configured, deliberately.** Routing is hash-based
+(`#/products`), so the server only ever serves `/` and a catch-all rewrite would
+be inert. If routing ever moves to the History API, that is the moment to add
+one.
+
+## Structure
+
+```
+src/
+  data/         catalog, ingredient library, certifications, journal
+  lib/          research service, preference evaluation, storage, router,
+                Safer Choice lookups
+  components/   shared UI
+  views/        one file per screen
+  styles/       design tokens
+  assets/images image slots + manifest
+scripts/        one-off data imports
+supabase/       SQL to paste into the dashboard
+```
+
+## Stack
+
+React + Vite, with `@supabase/supabase-js` for optional sync. No router dependency.
