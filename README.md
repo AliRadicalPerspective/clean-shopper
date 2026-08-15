@@ -109,6 +109,31 @@ All nineteen products are photographed. Any product left without one renders as 
 
 One caveat worth carrying forward: `bottle-lavender-basket` is 316px wide, against 500–800px for every other photograph. It holds at card size and will look soft if that product is ever shown at full spread width, so replace it first when higher-resolution photography arrives. To fill one: drop the file into that folder, import it at the top of `index.js`, add it to `IMAGES` under a descriptive slot name, and point a product's `image` at that slot in `src/data/products.js`. Editorial slots are 3:2; product slots are 4:5.
 
+## Deploying
+
+Hosted on Vercel. `vercel.json` pins the build explicitly rather than relying on
+framework detection.
+
+1. Import the repo at [vercel.com/new](https://vercel.com/new).
+2. Add two environment variables under Settings → Environment Variables, for
+   both Production and Preview:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3. Deploy. Pushes to a branch get a preview URL; `main` becomes production.
+
+Both are safe in a client bundle — the publishable key is designed to ship in
+browser code, and every table it can reach is protected by row-level security.
+**Never** add `SUPABASE_SERVICE_ROLE_KEY` to Vercel; it bypasses RLS entirely
+and belongs only in a local shell.
+
+Without those variables the site still builds and runs: it serves all 19
+products from the bundled seed and says so on screen.
+
+**No SPA rewrite is configured, deliberately.** Routing is hash-based
+(`#/products`), so the server only ever serves `/` and a catch-all rewrite would
+be inert. If routing ever moves to the History API, that is the moment to add
+one.
+
 ## Structure
 
 ```
