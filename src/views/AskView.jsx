@@ -12,7 +12,11 @@ export default function AskView({ onAsk, history, prefsSummary, onNavigate }) {
       <div className="ask__column">
         <AskField
           onSubmit={onAsk}
-          label="What are you cleaning?"
+          label={
+            <>
+              What are<span className="ask-field__break"> </span>you cleaning?
+            </>
+          }
           display
         />
 
